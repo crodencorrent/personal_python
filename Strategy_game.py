@@ -13,7 +13,7 @@ WIDTH = 1200
 HEIGHT = 700
 #-------------------------------Classes-------------------------------
 class Terrain(object):
-	def __init__(self, name, sprite, traction, evade, phys, nature, aether):
+	def __init__(self, name, sprite, traction = 0, evade = 0, phys = 0, nature = 0, aether = 0):
 		self.name = name
 		self.sprite = sprite
 		self.traction = traction
@@ -72,6 +72,21 @@ mapSurface = pygame.Surface((WIDTH, HEIGHT))
 gridSurface = pygame.Surface((WIDTH-150, HEIGHT-150))
 screen_rect = windowSurface.get_rect()
 pygame.display.set_caption('Strategy Garm')
+#-----------------------------------------Image Loading----------------------------------
+terrain_sheet = spritesheet.spritesheet('Terrain_Tiles.png')
+# Sprite is 16x16 pixels at location 0,0 in the file...
+terrain = terrain_sheet.image_at((0, 0, 16, 16))
+image2 = pygame.image.load('rogue.png').convert_alpha()
+# Load two images into an array, their transparent bit is (255, 255, 255)
+images = terrain_sheet.images_at(((0, 0, 16, 16),(17, 0, 16,16)), colorkey=(255, 255, 255))
+#-------terrain images
+base_size = 32
+lava_sprite = terrain_sheet.image_at((0,base_size*4,32,32))
+tree_sprite = terrain_sheet.image_at((base_size*7,base_size*6,32,32))
+#-----------------------------------------------------------------------------------------
+#------------------------------------Terrain Declarations---------------------------------
+lava = Terrain("Lava", lava_sprite)
+tree = Terrain("Tree", tree_sprite)
 #color declarations
 BLACK = (0,0,0)
 WHITE = (255, 255, 255)
@@ -86,21 +101,27 @@ windowSurface.fill(WHITE)
 mapSurface.fill(WHITE)
 i = 0
 j = 0
-#print grid dimensions
+#print grid dimensionsk
 print("width", grid_width)
 print("height", grid_height)
 #draw grid tiles with random colors
 while (i < grid_width-1):
 	while (j < grid_height-1):
-		rand_color = random.randint(0,2)
-		if rand_color == 0:
-			color = GREEN
-		elif rand_color == 1:
-			color = BLUE
+		rand_terr = random.randint(0,1)
+		#draw terrain for top left of each 2x2 square
+		if (j%2 == 0 and i%2 == 0):
+			if rand_terr == 0:
+				terrain = lava
+			else:
+				terrain = tree
+			mapSurface.blit(terrain.sprite, (i*16,j*16))	
+		#assign same terrain to right square
+		elif(i%2 == 1):
+			terrain = grid[i-1][j].terrain
+		#assign same terrain to lower squares
 		else:
-			color = RED
-		pygame.draw.rect(mapSurface, color, grid[i][j])
-		grid[i][j].terrain = color
+			terrain = grid[i][j-1].terrain
+		grid[i][j].terrain = terrain
 		j += 1
 	i += 1
 	j = 0
@@ -110,14 +131,6 @@ i = 0
 gridSurface.blit(mapSurface, (0,0))
 windowSurface.blit(gridSurface, (0,0))
 pygame.display.update()
-#-----------------------------------------Image Loading----------------------------------
-ss = spritesheet.spritesheet('rogue.png')
-# Sprite is 16x16 pixels at location 0,0 in the file...
-image = ss.image_at((0, 0, 16, 16))
-image2 = pygame.image.load('rogue.png').convert_alpha()
-images = []
-# Load two images into an array, their transparent bit is (255, 255, 255)
-images = ss.images_at(((0, 0, 16, 16),(17, 0, 16,16)), colorkey=(255, 255, 255))
 #----------------------------------------------Game Loop-----------------------------------------------
 x_offset = [0]
 y_offset = [0]
@@ -141,7 +154,7 @@ while True:
 		gridSurface.fill(WHITE)
 	#mapSurface contains grid, sprites should be blit to mapSurfaces
 	#transparent sprites must be blit with BLEND_RGBA_MIN to achieve transparency
-	mapSurface.blit(image2, (0,0), area=None, special_flags = BLEND_RGBA_MIN)
+	mapSurface.blit(image2, (16,16), area=None, special_flags = BLEND_RGBA_MAX)
 	gridSurface.blit(mapSurface, (x_offset[0],y_offset[0]))
 	windowSurface.blit(gridSurface, (0,0))
 	pygame.display.update()
