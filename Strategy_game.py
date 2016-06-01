@@ -4,6 +4,7 @@ import os
 import math
 import pygame
 import random
+import spritesheet
 from pygame.locals import*
 from itertools import repeat
 #-----------------------------Constants-------------------------------
@@ -50,8 +51,9 @@ def scroll_map(keys, grid, update_needed, x_offset, y_offset):
 		update_needed = True
 	return update_needed
 
+
 #--------------------------------------------Initial Setup--------------------------------
-GRID_SQUARE_SIZE = 10
+GRID_SQUARE_SIZE = 16
 #set up battle grid
 grid_width = (WIDTH)/GRID_SQUARE_SIZE
 grid_height = (HEIGHT)/GRID_SQUARE_SIZE
@@ -103,9 +105,19 @@ while (i < grid_width-1):
 	i += 1
 	j = 0
 i = 0
+#Draw map onto grid, grid onto screen
+#Grid surface contains the area where the grid is visible, map surface contains entire grid
 gridSurface.blit(mapSurface, (0,0))
 windowSurface.blit(gridSurface, (0,0))
 pygame.display.update()
+#-----------------------------------------Image Loading----------------------------------
+ss = spritesheet.spritesheet('rogue.png')
+# Sprite is 16x16 pixels at location 0,0 in the file...
+image = ss.image_at((0, 0, 16, 16))
+image2 = pygame.image.load('rogue.png').convert_alpha()
+images = []
+# Load two images into an array, their transparent bit is (255, 255, 255)
+images = ss.images_at(((0, 0, 16, 16),(17, 0, 16,16)), colorkey=(255, 255, 255))
 #----------------------------------------------Game Loop-----------------------------------------------
 x_offset = [0]
 y_offset = [0]
@@ -127,6 +139,9 @@ while True:
 	if update_needed:
 		windowSurface.fill(WHITE)
 		gridSurface.fill(WHITE)
+	#mapSurface contains grid, sprites should be blit to mapSurfaces
+	#transparent sprites must be blit with BLEND_RGBA_MIN to achieve transparency
+	mapSurface.blit(image2, (0,0), area=None, special_flags = BLEND_RGBA_MIN)
 	gridSurface.blit(mapSurface, (x_offset[0],y_offset[0]))
 	windowSurface.blit(gridSurface, (0,0))
 	pygame.display.update()
