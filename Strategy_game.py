@@ -56,7 +56,12 @@ def scroll_map(keys, grid, update_needed, x_offset, y_offset):
 GRID_SQUARE_SIZE = 16
 #set up battle grid
 grid_width = (WIDTH)/GRID_SQUARE_SIZE
+if grid_width%2 == 1:
+	grid_width = grid_width - 1
 grid_height = (HEIGHT)/GRID_SQUARE_SIZE
+if grid_height%2 == 1:
+	grid_height = grid_height - 1
+
 grid = []
 for i in range(0, grid_width):
 	x = []
@@ -70,6 +75,8 @@ mainClock = pygame.time.Clock()
 windowSurface = pygame.display.set_mode((WIDTH,HEIGHT),0,32)
 mapSurface = pygame.Surface((WIDTH, HEIGHT))
 gridSurface = pygame.Surface((WIDTH-150, HEIGHT-150))
+GRID_SURFACE_WIDTH = WIDTH - 150
+GRID_SURFACE_HEIGHT = HEIGHT - 150
 screen_rect = windowSurface.get_rect()
 pygame.display.set_caption('Strategy Garm')
 #-----------------------------------------Image Loading----------------------------------
@@ -136,9 +143,24 @@ x_offset = [0]
 y_offset = [0]
 while True:
 	for event in pygame.event.get():
+		#Check for quit
 		if event.type == QUIT:
 			pygame.quit()
 			sys.exit()
+		#Get the mous einput
+		if event.type == pygame.MOUSEBUTTONUP:
+			pos = pygame.mouse.get_pos()
+			mouse_x = pos[0]
+			mouse_y = pos[1]
+			#check if the mouse is in the grid window
+			if (mouse_x < GRID_SURFACE_WIDTH and mouse_y < GRID_SURFACE_HEIGHT):
+				print(pygame.mouse.get_pos())
+				actual_x = mouse_x - x_offset[0]
+				actual_y = mouse_y - y_offset[0]
+				grid_space = (actual_x/16, actual_y/16)
+				print(actual_x, actual_y)
+				print(grid_space)
+				print(grid[grid_space[0]][grid_space[1]].terrain.name)
 	keys = pygame.key.get_pressed()
 	#Variable to determine if background needs updating
 	update_needed = False
