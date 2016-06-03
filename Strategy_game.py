@@ -13,14 +13,15 @@ WIDTH = 1200
 HEIGHT = 700
 #-------------------------------Classes-------------------------------
 class Terrain(object):
-	def __init__(self, name, sprite, traction = 0, evade = 0, phys = 0, nature = 0, aether = 0):
+	def __init__(self, name, sprite, traction = 0, evade = 0, phys = 0, nature = 0, energy = 0, phantasm = 0):
 		self.name = name
 		self.sprite = sprite
 		self.traction = traction
 		self.evade = evade
 		self.phys = phys
 		self.nature = nature
-		self.aether = aether
+		self.energy = energy
+		self.phantasm = phantasm
 
 class Tile(object):
 	def __init__(self, rect, x_pos, y_pos, is_occupied, is_passable, terrain):
@@ -35,6 +36,40 @@ class Battle_Grid(object):
 		self.grid = grid
 		self.width = width
 		self.height = height
+
+class Profession(object):
+	def __init__(self, weight_class = "light", base_hp = 5, base_ep = 5, hp_growth = 1, ep_growth = 1, 
+	base_weight = 1, base_atk = 1, base_def = 1, base_speed = 1, base_magic = 1, base_mdef = 1,
+	atk_growth = 1, def_growth = 1, speed_growth = 1, magic_growth = 1, mdef_growth = 1):
+		self.weight_class = weight_class
+		self. base_hp = base_hp
+		self.base_ep = base_ep
+		self.hp_growth = hp_growth
+		self.ep_growth = ep_growth
+		self.base_weight = base_weight
+		self.base_atk = base_atk
+		self.base_def = base_def
+		self.base_speed = base_speed
+		self.base_magic = base_magic
+		self.base_mdef = base_mdef
+		self.atk_growth = atk_growth
+		self.def_growth = def_growth
+		self.speed_growth = speed_growth
+		self.magic_growth = magic_growth
+		self.mdef_growth = mdef_growth
+test_prof = Profession()
+class Unit(object):
+	def __init__(self, level = 1, grid_position = (0,0), hp = 10, max_hp = 10, ep = 10, max_ep = 10, profession = test_prof):
+		self.grid_position = grid_position
+		self.level = level
+		self.max_hp = max_hp
+		self.max_ep = max_ep
+		self.hp = hp
+		self.ep = ep
+		self.profession = profession
+glorp = Unit()
+print(glorp.profession.weight_class)
+
 #------------------------------Functions------------------------------
 def scroll_map(keys, grid, update_needed, x_offset, y_offset):
 	if (keys[pygame.K_LEFT]):
@@ -142,12 +177,13 @@ pygame.display.update()
 x_offset = [0]
 y_offset = [0]
 while True:
+#---------------------------------------------Player input----------------------------------------------
 	for event in pygame.event.get():
 		#Check for quit
 		if event.type == QUIT:
 			pygame.quit()
 			sys.exit()
-		#Get the mous einput
+		#Get the mouse input
 		if event.type == pygame.MOUSEBUTTONUP:
 			pos = pygame.mouse.get_pos()
 			mouse_x = pos[0]
@@ -161,6 +197,7 @@ while True:
 				print(actual_x, actual_y)
 				print(grid_space)
 				print(grid[grid_space[0]][grid_space[1]].terrain.name)
+	#get array of keypresses
 	keys = pygame.key.get_pressed()
 	#Variable to determine if background needs updating
 	update_needed = False
@@ -176,9 +213,13 @@ while True:
 		gridSurface.fill(WHITE)
 	#mapSurface contains grid, sprites should be blit to mapSurfaces
 	#transparent sprites must be blit with BLEND_RGBA_MIN to achieve transparency
+	#Drawing a sprite to the "map" surface
 	mapSurface.blit(image2, (16,16), area=None, special_flags = BLEND_RGBA_MAX)
+	#drawing the map surface to the grid window (the area in the upper left)
 	gridSurface.blit(mapSurface, (x_offset[0],y_offset[0]))
+	#Drawing the grid window to the entire window
 	windowSurface.blit(gridSurface, (0,0))
+	#update the display
 	pygame.display.update()
 	#----------------------------------------------tick the clock----------------------------------------
 	mainClock.tick(FPS)
