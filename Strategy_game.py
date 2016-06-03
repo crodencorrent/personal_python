@@ -11,6 +11,29 @@ from itertools import repeat
 FPS = 60
 WIDTH = 1200
 HEIGHT = 700
+#initialization of pygame, clock, screen shake
+pygame.init()
+mainClock = pygame.time.Clock()
+windowSurface = pygame.display.set_mode((WIDTH,HEIGHT),0,32)
+mapSurface = pygame.Surface((WIDTH, HEIGHT))
+gridSurface = pygame.Surface((WIDTH-150, HEIGHT-150))
+GRID_SURFACE_WIDTH = WIDTH - 150
+GRID_SURFACE_HEIGHT = HEIGHT - 150
+screen_rect = windowSurface.get_rect()
+pygame.display.set_caption('Strategy Garm')
+#-----------------------------------------Image Loading----------------------------------
+terrain_sheet = spritesheet.spritesheet('Terrain_Tiles.png')
+# Sprite is 16x16 pixels at location 0,0 in the file...
+terrain = terrain_sheet.image_at((0, 0, 16, 16))
+image2 = pygame.image.load('rogue.png').convert_alpha()
+# Load two images into an array, their transparent bit is (255, 255, 255)
+images = terrain_sheet.images_at(((0, 0, 16, 16),(17, 0, 16,16)), colorkey=(255, 255, 255))
+#-------terrain images
+base_size = 32
+lava_sprite = terrain_sheet.image_at((0,base_size*4,32,32))
+tree_sprite = terrain_sheet.image_at((base_size*7,base_size*6,32,32))
+#-----------------------------------------------------------------------------------------
+#color declarations
 #-------------------------------Classes-------------------------------
 class Terrain(object):
 	def __init__(self, name, sprite, traction = 0, evade = 0, phys = 0, nature = 0, energy = 0, phantasm = 0):
@@ -57,9 +80,10 @@ class Profession(object):
 		self.speed_growth = speed_growth
 		self.magic_growth = magic_growth
 		self.mdef_growth = mdef_growth
-test_prof = Profession()
+
+default_prof = Profession()
 class Unit(object):
-	def __init__(self, level = 1, grid_position = (0,0), hp = 10, max_hp = 10, ep = 10, max_ep = 10, profession = test_prof):
+	def __init__(self, level = 1, grid_position = (0,0), hp = 10, max_hp = 10, ep = 10, max_ep = 10, profession = default_prof):
 		self.grid_position = grid_position
 		self.level = level
 		self.max_hp = max_hp
@@ -85,8 +109,14 @@ def scroll_map(keys, grid, update_needed, x_offset, y_offset):
 		y_offset[0] += 3
 		update_needed = True
 	return update_needed
-
-
+def is_in(point, rect):
+	if (point[0] < rect.left + rect.width) and (point[0] > rect.left):
+		if (point[1] > rect.top and point[1] < rect.top + rect.height):
+			return True
+	return False
+#------------------------------------Terrain Declarations---------------------------------
+lava = Terrain("Lava", lava_sprite)
+tree = Terrain("Tree", tree_sprite)
 #--------------------------------------------Initial Setup--------------------------------
 GRID_SQUARE_SIZE = 16
 #set up battle grid
@@ -104,32 +134,7 @@ for i in range(0, grid_width):
 		x.append(Tile(pygame.Rect(i*GRID_SQUARE_SIZE,j*GRID_SQUARE_SIZE, GRID_SQUARE_SIZE, GRID_SQUARE_SIZE), i, j,1,1, (0,0,0)))
 	grid.append(x)
 
-#initialization of pygame, clock, screen shake
-pygame.init()
-mainClock = pygame.time.Clock()
-windowSurface = pygame.display.set_mode((WIDTH,HEIGHT),0,32)
-mapSurface = pygame.Surface((WIDTH, HEIGHT))
-gridSurface = pygame.Surface((WIDTH-150, HEIGHT-150))
-GRID_SURFACE_WIDTH = WIDTH - 150
-GRID_SURFACE_HEIGHT = HEIGHT - 150
-screen_rect = windowSurface.get_rect()
-pygame.display.set_caption('Strategy Garm')
-#-----------------------------------------Image Loading----------------------------------
-terrain_sheet = spritesheet.spritesheet('Terrain_Tiles.png')
-# Sprite is 16x16 pixels at location 0,0 in the file...
-terrain = terrain_sheet.image_at((0, 0, 16, 16))
-image2 = pygame.image.load('rogue.png').convert_alpha()
-# Load two images into an array, their transparent bit is (255, 255, 255)
-images = terrain_sheet.images_at(((0, 0, 16, 16),(17, 0, 16,16)), colorkey=(255, 255, 255))
-#-------terrain images
-base_size = 32
-lava_sprite = terrain_sheet.image_at((0,base_size*4,32,32))
-tree_sprite = terrain_sheet.image_at((base_size*7,base_size*6,32,32))
-#-----------------------------------------------------------------------------------------
-#------------------------------------Terrain Declarations---------------------------------
-lava = Terrain("Lava", lava_sprite)
-tree = Terrain("Tree", tree_sprite)
-#color declarations
+
 BLACK = (0,0,0)
 WHITE = (255, 255, 255)
 MYSTERY = (200, 100, 50)
@@ -147,8 +152,8 @@ j = 0
 print("width", grid_width)
 print("height", grid_height)
 #draw grid tiles with random colors
-while (i < grid_width-1):
-	while (j < grid_height-1):
+while (i < grid_width):
+	while (j < grid_height):
 		rand_terr = random.randint(0,1)
 		#draw terrain for top left of each 2x2 square
 		if (j%2 == 0 and i%2 == 0):
@@ -193,10 +198,13 @@ while True:
 				print(pygame.mouse.get_pos())
 				actual_x = mouse_x - x_offset[0]
 				actual_y = mouse_y - y_offset[0]
+				actuals = (actual_x, actual_y)
 				grid_space = (actual_x/16, actual_y/16)
 				print(actual_x, actual_y)
 				print(grid_space)
-				print(grid[grid_space[0]][grid_space[1]].terrain.name)
+				print(is_in(pygame.mouse.get_pos(), gridSurface.get_rect()))
+				if (grid_space[0] < grid_width and grid_space[1] < grid_height):
+					print(grid[grid_space[0]][grid_space[1]].terrain.name)
 	#get array of keypresses
 	keys = pygame.key.get_pressed()
 	#Variable to determine if background needs updating
