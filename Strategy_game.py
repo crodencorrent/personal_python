@@ -5,6 +5,7 @@ import math
 import pygame
 import random
 import spritesheet
+import Queue
 from pygame.locals import*
 from itertools import repeat
 #-----------------------------Constants-------------------------------
@@ -53,6 +54,8 @@ class Tile(object):
 		self.y_pos = y_pos
 		self.is_occupied = is_occupied
 		self.is_passable = is_passable
+		self.is_moveable = True
+		self.is_move_highlighted = False
 		self.terrain = terrain
 class Battle_Grid(object):
 	def __init__(self, grid, width, height):
@@ -83,17 +86,66 @@ class Profession(object):
 
 default_prof = Profession()
 class Unit(object):
-	def __init__(self, sprite = image2, level = 1, grid_position = (0,0), hp = 10, max_hp = 10, ep = 10, max_ep = 10, profession = default_prof):
+	def __init__(self, sprite = image2, level = 1, hp = 10, max_hp = 10, ep = 10, max_ep = 10, profession = default_prof):
 		self.sprite = sprite
-		self.grid_position = grid_position
+		self.x_pos = 10
+		self.y_pos = 10
 		self.level = level
 		self.max_hp = max_hp
 		self.max_ep = max_ep
 		self.hp = hp
 		self.ep = ep
 		self.profession = profession
-		self.x_pos = 0
-		self.y_pos = 0
+		self.move_range = 5
+	def find_move_range(self, grid, current_square):
+		Q = Queue.Queue()
+		Q.put(current_square)
+		while (not Q.empty()):
+			current = Q.get()
+			right = (current[0]+1, current[1])
+			up = (current[0], current[1]+1)
+			left = (current[0]-1, current[1])
+			down =  (current[0], current[1]-1)
+			#check if right is already highlighted
+			if(not grid[right[0]][right[1]].is_move_highlighted):
+				x_distance = abs(right[0] - self.x_pos)
+				y_distance = abs(right[1] - self.y_pos)
+				#check if right is in the move_range
+				if (x_distance + y_distance <= self.move_range):
+					#highlight right and put in Queue
+					grid[current[0]+1][current[1]].is_move_highlighted = True
+					Q.put(right)
+			#check if up is already highlighted
+			if(not grid[up[0]][up[1]].is_move_highlighted):
+				x_distance = abs(up[0] - self.x_pos)
+				y_distance = abs(up[1] - self.y_pos)
+				#check if up is in the move_range
+				if (x_distance + y_distance <= self.move_range):
+					#highlight up and put in Queue
+					grid[current[0]+1][current[1]].is_move_highlighted = True
+					Q.put(up)
+			#check if left is already highlighted
+			if(not grid[left[0]][left[1]].is_move_highlighted):
+				x_distance = abs(left[0] - self.x_pos)
+				y_distance = abs(left[1] - self.y_pos)
+				#check if left is in the move_range
+				if (x_distance + y_distance <= self.move_range):
+					#highlight left and put in Queue
+					grid[current[0]+1][current[1]].is_move_highlighted = True
+					Q.put(left)
+			if(not grid[down[0]][down[1]].is_move_highlighted):
+				x_distance = abs(down[0] - self.x_pos)
+				y_distance = abs(down[1] - self.y_pos)
+				#check if down is in the move_range
+				if (x_distance + y_distance <= self.move_range):
+					#highlight down and put in Queue
+					grid[current[0]+1][current[1]].is_move_highlighted = True
+					Q.put(down)
+
+
+			
+
+
 test_unit = Unit()
 print(test_unit.profession.weight_class)
 print(test_unit.x_pos)
@@ -181,16 +233,23 @@ while (i < grid_width):
 	i += 1
 	j = 0
 i = 0
+#-------------__TESTING__-----------
+test_unit.find_move_range(grid, (test_unit.x_pos, test_unit.y_pos))
+for row in grid:
+	for tile in row:
+		if tile.is_move_highlighted:
+			pygame.draw.rect(mapSurface, BLUE, Rect(tile.x_pos*16, tile.y_pos*16, 16, 16))
 #Draw map onto grid, grid onto screen
 #Grid surface contains the area where the grid is visible, map surface contains entire grid
+friendly_units = []
+friendly_units.append(test_unit)
+draw_units(mapSurface,friendly_units)
 gridSurface.blit(mapSurface, (0,0))
 windowSurface.blit(gridSurface, (0,0))
 pygame.display.update()
 #----------------------------------------------Game Loop-----------------------------------------------
 x_offset = [0]
 y_offset = [0]
-friendly_units = []
-friendly_units.append(test_unit)
 while True:
 #---------------------------------------------Player input----------------------------------------------
 	for event in pygame.event.get():
@@ -227,15 +286,15 @@ while True:
 	if update_needed:
 		windowSurface.fill(WHITE)
 		gridSurface.fill(WHITE)
+		draw_units(mapSurface,friendly_units)
+		#drawing the map surface to the grid window (the area in the upper left)
+		gridSurface.blit(mapSurface, (x_offset[0],y_offset[0]))
+		#Drawing the grid window to the entire window
+		windowSurface.blit(gridSurface, (0,0))
+		#update the display
+		pygame.display.update()
 	#mapSurface contains grid, sprites should be blit to mapSurfaces
 	#transparent sprites must be blit with BLEND_RGBA_MIN to achieve transparency
 	#Drawing a sprite to the "map" surface
-	draw_units(mapSurface,friendly_units)
-	#drawing the map surface to the grid window (the area in the upper left)
-	gridSurface.blit(mapSurface, (x_offset[0],y_offset[0]))
-	#Drawing the grid window to the entire window
-	windowSurface.blit(gridSurface, (0,0))
-	#update the display
-	pygame.display.update()
 	#----------------------------------------------tick the clock----------------------------------------
 	mainClock.tick(FPS)
