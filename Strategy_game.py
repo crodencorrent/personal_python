@@ -122,7 +122,7 @@ class Unit(object):
 				#check if up is in the move_range
 				if (x_distance + y_distance <= self.move_range):
 					#highlight up and put in Queue
-					grid[current[0]+1][current[1]].is_move_highlighted = True
+					grid[current[0]][current[1]+1].is_move_highlighted = True
 					Q.put(up)
 			#check if left is already highlighted
 			if(not grid[left[0]][left[1]].is_move_highlighted):
@@ -131,7 +131,7 @@ class Unit(object):
 				#check if left is in the move_range
 				if (x_distance + y_distance <= self.move_range):
 					#highlight left and put in Queue
-					grid[current[0]+1][current[1]].is_move_highlighted = True
+					grid[current[0]-1][current[1]].is_move_highlighted = True
 					Q.put(left)
 			if(not grid[down[0]][down[1]].is_move_highlighted):
 				x_distance = abs(down[0] - self.x_pos)
@@ -139,7 +139,7 @@ class Unit(object):
 				#check if down is in the move_range
 				if (x_distance + y_distance <= self.move_range):
 					#highlight down and put in Queue
-					grid[current[0]+1][current[1]].is_move_highlighted = True
+					grid[current[0]][current[1]-1].is_move_highlighted = True
 					Q.put(down)
 
 
@@ -239,6 +239,7 @@ for row in grid:
 	for tile in row:
 		if tile.is_move_highlighted:
 			pygame.draw.rect(mapSurface, BLUE, Rect(tile.x_pos*16, tile.y_pos*16, 16, 16))
+pygame.draw.rect(mapSurface, RED, Rect(10*16, 10*16, 16, 16))
 #Draw map onto grid, grid onto screen
 #Grid surface contains the area where the grid is visible, map surface contains entire grid
 friendly_units = []
