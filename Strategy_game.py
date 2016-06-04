@@ -25,7 +25,7 @@ pygame.display.set_caption('Strategy Garm')
 terrain_sheet = spritesheet.spritesheet('Terrain_Tiles.png')
 # Sprite is 16x16 pixels at location 0,0 in the file...
 terrain = terrain_sheet.image_at((0, 0, 16, 16))
-image2 = pygame.image.load('rogue.png').convert_alpha()
+image2 = pygame.image.load('rogue(1).png').convert_alpha()
 # Load two images into an array, their transparent bit is (255, 255, 255)
 images = terrain_sheet.images_at(((0, 0, 16, 16),(17, 0, 16,16)), colorkey=(255, 255, 255))
 #-------terrain images
@@ -83,7 +83,8 @@ class Profession(object):
 
 default_prof = Profession()
 class Unit(object):
-	def __init__(self, level = 1, grid_position = (0,0), hp = 10, max_hp = 10, ep = 10, max_ep = 10, profession = default_prof):
+	def __init__(self, sprite = image2, level = 1, grid_position = (0,0), hp = 10, max_hp = 10, ep = 10, max_ep = 10, profession = default_prof):
+		self.sprite = sprite
 		self.grid_position = grid_position
 		self.level = level
 		self.max_hp = max_hp
@@ -91,8 +92,11 @@ class Unit(object):
 		self.hp = hp
 		self.ep = ep
 		self.profession = profession
-glorp = Unit()
-print(glorp.profession.weight_class)
+		self.x_pos = 0
+		self.y_pos = 0
+test_unit = Unit()
+print(test_unit.profession.weight_class)
+print(test_unit.x_pos)
 
 #------------------------------Functions------------------------------
 def scroll_map(keys, grid, update_needed, x_offset, y_offset):
@@ -114,6 +118,10 @@ def is_in(point, rect):
 		if (point[1] > rect.top and point[1] < rect.top + rect.height):
 			return True
 	return False
+
+def draw_units(mapSurface, unit_list):
+	for unit in unit_list:
+		mapSurface.blit(unit.sprite, (unit.x_pos*16,unit.y_pos*16), area=None, special_flags = BLEND_RGBA_SUB)
 #------------------------------------Terrain Declarations---------------------------------
 lava = Terrain("Lava", lava_sprite)
 tree = Terrain("Tree", tree_sprite)
@@ -181,6 +189,8 @@ pygame.display.update()
 #----------------------------------------------Game Loop-----------------------------------------------
 x_offset = [0]
 y_offset = [0]
+friendly_units = []
+friendly_units.append(test_unit)
 while True:
 #---------------------------------------------Player input----------------------------------------------
 	for event in pygame.event.get():
@@ -214,15 +224,13 @@ while True:
 	#fill window background white
 	#fill original screen black (in case of screen shake)
 	#---------------------------------------------update the display-----------------------------------
-	i = 0
-	j = 0
 	if update_needed:
 		windowSurface.fill(WHITE)
 		gridSurface.fill(WHITE)
 	#mapSurface contains grid, sprites should be blit to mapSurfaces
 	#transparent sprites must be blit with BLEND_RGBA_MIN to achieve transparency
 	#Drawing a sprite to the "map" surface
-	mapSurface.blit(image2, (16,16), area=None, special_flags = BLEND_RGBA_MAX)
+	draw_units(mapSurface,friendly_units)
 	#drawing the map surface to the grid window (the area in the upper left)
 	gridSurface.blit(mapSurface, (x_offset[0],y_offset[0]))
 	#Drawing the grid window to the entire window
