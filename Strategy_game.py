@@ -9,14 +9,14 @@ import Queue
 from pygame.locals import*
 from itertools import repeat
 #-----------------------------Constants-------------------------------
-FPS = 60
+FPS = 30
 WIDTH = 1200
 HEIGHT = 700
 #initialization of pygame, clock, screen shake
 pygame.init()
 mainClock = pygame.time.Clock()
 windowSurface = pygame.display.set_mode((WIDTH,HEIGHT),0,32)
-mapSurface = pygame.Surface((WIDTH, HEIGHT))
+mapWindow = pygame.Surface((WIDTH, HEIGHT))
 gridSurface = pygame.Surface((WIDTH-150, HEIGHT-150))
 GRID_SURFACE_WIDTH = WIDTH - 150
 GRID_SURFACE_HEIGHT = HEIGHT - 150
@@ -24,6 +24,14 @@ screen_rect = windowSurface.get_rect()
 pygame.display.set_caption('Strategy Garm')
 #-----------------------------------------Image Loading----------------------------------
 terrain_sheet = spritesheet.spritesheet('Terrain_Tiles.png')
+move_animation_sheet = spritesheet.spritesheet('move_rect_animation.bmp.png')
+count = 0
+move_anims = []
+while count < 8:
+	new_anim = move_animation_sheet.image_at((count*32, 0, 32, 32))
+	new_anim = pygame.transform.smoothscale(new_anim, (16,16))
+	move_anims.append(new_anim)
+	count += 1
 # Sprite is 16x16 pixels at location 0,0 in the file...
 terrain = terrain_sheet.image_at((0, 0, 16, 16))
 image2 = pygame.image.load('rogue(1).png').convert_alpha()
@@ -152,17 +160,18 @@ print(test_unit.x_pos)
 
 #------------------------------Functions------------------------------
 def scroll_map(keys, grid, update_needed, x_offset, y_offset):
+	scroll_speed = 6
 	if (keys[pygame.K_LEFT]):
-		x_offset[0] -= 3
+		x_offset[0] -= scroll_speed
 		update_needed = True
 	if (keys[pygame.K_RIGHT]):
-		x_offset[0] += 3
+		x_offset[0] += scroll_speed
 		update_needed = True
 	if (keys[pygame.K_UP]):
-		y_offset[0] -= 3
+		y_offset[0] -= scroll_speed
 		update_needed = True
 	if (keys[pygame.K_DOWN]):
-		y_offset[0] += 3
+		y_offset[0] += scroll_speed
 		update_needed = True
 	return update_needed
 def is_in(point, rect):
@@ -171,9 +180,9 @@ def is_in(point, rect):
 			return True
 	return False
 
-def draw_units(mapSurface, unit_list):
+def draw_units(mapWindow, unit_list):
 	for unit in unit_list:
-		mapSurface.blit(unit.sprite, (unit.x_pos*16,unit.y_pos*16), area=None, special_flags = BLEND_RGBA_SUB)
+		mapWindow.blit(unit.sprite, (unit.x_pos*16,unit.y_pos*16), area=None, special_flags = BLEND_RGBA_SUB)
 #------------------------------------Terrain Declarations---------------------------------
 lava = Terrain("Lava", lava_sprite)
 tree = Terrain("Tree", tree_sprite)
@@ -199,13 +208,13 @@ BLACK = (0,0,0)
 WHITE = (255, 255, 255)
 MYSTERY = (200, 100, 50)
 GREEN = (0,255,0)
-BLUE = (0, 0, 255)
+BLUE = (0, 0, 255, 128)
 RED = (255, 0 , 0)
 #font setup
 basicFont = pygame.font.SysFont(None, 48)
 #text setup
 windowSurface.fill(WHITE)
-mapSurface.fill(WHITE)
+mapWindow.fill(WHITE)
 i = 0
 j = 0
 #print grid dimensionsk
@@ -221,7 +230,7 @@ while (i < grid_width):
 				terrain = lava
 			else:
 				terrain = tree
-			mapSurface.blit(terrain.sprite, (i*16,j*16))	
+			mapWindow.blit(terrain.sprite, (i*16,j*16))	
 		#assign same terrain to right square
 		elif(i%2 == 1):
 			terrain = grid[i-1][j].terrain
@@ -238,19 +247,20 @@ test_unit.find_move_range(grid, (test_unit.x_pos, test_unit.y_pos))
 for row in grid:
 	for tile in row:
 		if tile.is_move_highlighted:
-			pygame.draw.rect(mapSurface, BLUE, Rect(tile.x_pos*16, tile.y_pos*16, 16, 16))
-pygame.draw.rect(mapSurface, RED, Rect(10*16, 10*16, 16, 16))
+			mapWindow.blit(move_anims[0], Rect(tile.x_pos*16, tile.y_pos*16, 16, 16), area = None, special_flags = BLEND_RGBA_ADD)
+pygame.draw.rect(mapWindow, RED, Rect(10*16, 10*16, 16, 16))
 #Draw map onto grid, grid onto screen
 #Grid surface contains the area where the grid is visible, map surface contains entire grid
 friendly_units = []
 friendly_units.append(test_unit)
-draw_units(mapSurface,friendly_units)
-gridSurface.blit(mapSurface, (0,0))
+draw_units(mapWindow,friendly_units)
+gridSurface.blit(mapWindow, (0,0))
 windowSurface.blit(gridSurface, (0,0))
 pygame.display.update()
 #----------------------------------------------Game Loop-----------------------------------------------
 x_offset = [0]
 y_offset = [0]
+anim_count = 0
 while True:
 #---------------------------------------------Player input----------------------------------------------
 	for event in pygame.event.get():
@@ -283,18 +293,28 @@ while True:
 	update_needed = scroll_map(keys, grid, update_needed, x_offset, y_offset)
 	#fill window background white
 	#fill original screen black (in case of screen shake)
-	#---------------------------------------------update the display-----------------------------------
-	if update_needed:
-		windowSurface.fill(WHITE)
-		gridSurface.fill(WHITE)
-		draw_units(mapSurface,friendly_units)
+	#---------------------------------------------update the display-----------------------------------:
+	windowSurface.fill(WHITE)
+	gridSurface.fill(WHITE)
+	mapWindow.fill(WHITE)
+	for x_index, row in enumerate(grid):
+		for y_index, tile in enumerate(row):
+			if (y_index%2 == 0 and x_index%2 == 0):
+				mapWindow.blit(tile.terrain.sprite, (x_index*16,y_index*16))	
+			if tile.is_move_highlighted:
+				mapWindow.blit(move_anims[anim_count%len(move_anims)], Rect(tile.x_pos*16, tile.y_pos*16, 16, 16), area = None, special_flags = BLEND_RGBA_ADD)
 		#drawing the map surface to the grid window (the area in the upper left)
-		gridSurface.blit(mapSurface, (x_offset[0],y_offset[0]))
+	draw_units(mapWindow,friendly_units)
+	gridSurface.blit(mapWindow, (x_offset[0],y_offset[0]))
 		#Drawing the grid window to the entire window
-		windowSurface.blit(gridSurface, (0,0))
+	windowSurface.blit(gridSurface, (0,0))
 		#update the display
-		pygame.display.update()
-	#mapSurface contains grid, sprites should be blit to mapSurfaces
+
+	pygame.display.update()
+	anim_count += 1
+	if anim_count > (50,000):
+		anim_count = 0
+	#mapWindow contains grid, sprites should be blit to mapWindows
 	#transparent sprites must be blit with BLEND_RGBA_MIN to achieve transparency
 	#Drawing a sprite to the "map" surface
 	#----------------------------------------------tick the clock----------------------------------------
