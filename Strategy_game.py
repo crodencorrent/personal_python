@@ -198,10 +198,20 @@ class Unit(object):
 						grid[current[0]][current[1]-1].is_move_highlighted = False
 						Q.put(down)
 
+class Skill(object):
+	def __init__(self, name = "Skill", is_passive = False, energy_cost = 0, turn_time = 1, power_mult = 1, aoe = 0, statuses = [], 
+	description = "", targets_friendly = False):
+		self.name = name
+		self.is_passive = is_passive
+		self.energy_cost = energy_cost
+		self.turn_time = turn_time
+		self. power_mult = power_mult
+		self.aoe = aoe
+		self.statuses = statuses
+		self.description = description
+		self.targets_friendly = targets_friendly
 
-			
-
-
+default_skill = Skill()
 test_unit = Unit()
 test_unit.is_move_selected = True
 print(test_unit.profession.weight_class)
@@ -342,24 +352,42 @@ while True:
 			mouse_y = pos[1]
 			#check if the mouse is in the grid window
 			if (mouse_x < GRID_SURFACE_WIDTH and mouse_y < GRID_SURFACE_HEIGHT):
+				#----getting mouse position, grid location-----
 				print(pygame.mouse.get_pos())
 				actual_x = mouse_x - x_offset[0]
 				actual_y = mouse_y - y_offset[0]
 				actuals = (actual_x, actual_y)
 				grid_space = (actual_x/16, actual_y/16)
+				#debugging
 				print(actual_x, actual_y)
 				print(grid_space)
-				print(is_in(pygame.mouse.get_pos(), gridSurface.get_rect()))
+				print("Mouse is in grid:", is_in(pygame.mouse.get_pos(), gridSurface.get_rect()))
+				print("Mouse is in map:", is_in(pygame.mouse.get_pos(), mapWindow.get_rect()))
+				#if space is in the grid
 				if (grid_space[0] < grid_width and grid_space[1] < grid_height):
+					#assign selected space to grid tile
 					selected_space = grid[grid_space[0]][grid_space[1]]
+					#debugging
 					print(grid[grid_space[0]][grid_space[1]].terrain.name)
 					print("this space is occupied: ", selected_space.is_occupied)
-					if selected_space.is_occupied:
+					#if occupied, selected the unit in it
+					if selected_space.is_occupied and currently_selected_unit == None:
 						currently_selected_unit = selected_space.unit
 					else:
-						if currently_selected_unit is not None:
+						#if selected unit and clicking on a non-highlighted space, cancel unit seleciton and move range display
+						if ((currently_selected_unit is not None) and not (selected_space.is_move_highlighted)):
 							currently_selected_unit.unfind_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
-						currently_selected_unit = None
+							currently_selected_unit = None
+						#if selected unit and space IS move highlighted, move the unit
+						elif ((currently_selected_unit is not None) and (selected_space.is_move_highlighted)):
+							currently_selected_unit.unfind_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+							distance = abs(currently_selected_unit.x_pos - selected_space.x_pos) + abs(currently_selected_unit.y_pos - selected_space.y_pos)
+							currently_selected_unit.x_pos = selected_space.x_pos
+							currently_selected_unit.y_pos = selected_space.y_pos
+							print("current coordinates =", currently_selected_unit.x_pos, currently_selected_unit.y_pos)
+							currently_selected_unit.move_range -= distance
+							currently_selected_unit.find_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+					#if the selected_unit isnt none, find its move range
 					if currently_selected_unit is not None:
 						currently_selected_unit.find_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
 	#get array of keypresses
