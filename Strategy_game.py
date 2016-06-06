@@ -143,6 +143,16 @@ class Unit(object):
 		self.all_occupied.append(grid[self.x_pos+1][self.y_pos])
 		self.all_occupied.append(grid[self.x_pos][self.y_pos+1])
 		self.all_occupied.append(grid[self.x_pos+1][self.y_pos+1])
+		x_pos = self.x_pos
+		y_pos = self.y_pos
+		grid[x_pos][y_pos].is_occupied = True
+		grid[x_pos +1][y_pos].is_occupied = True
+		grid[x_pos][y_pos+1].is_occupied = True
+		grid[x_pos+1][y_pos+1].is_occupied = True
+		grid[x_pos][y_pos].unit = self
+		grid[x_pos +1][y_pos].unit = self
+		grid[x_pos][y_pos+1].unit = self
+		grid[x_pos+1][y_pos+1].unit = self
 
 	def find_min_distance(self, point):
 		minimum_distance = 100000
@@ -385,29 +395,6 @@ draw_units(mapWindow, enemy_units)
 gridSurface.blit(mapWindow, (0,0))
 windowSurface.blit(gridSurface, (0,0))
 pygame.display.update()
-#set occupied tiles
-for unit in friendly_units:
-	x_pos = unit.x_pos
-	y_pos = unit.y_pos
-	grid[x_pos][y_pos].is_occupied = True
-	grid[x_pos +1][y_pos].is_occupied = True
-	grid[x_pos][y_pos+1].is_occupied = True
-	grid[x_pos+1][y_pos+1].is_occupied = True
-	grid[x_pos][y_pos].unit = unit
-	grid[x_pos +1][y_pos].unit = unit
-	grid[x_pos][y_pos+1].unit = unit
-	grid[x_pos+1][y_pos+1].unit =unit
-for unit in enemy_units:
-	x_pos = unit.x_pos
-	y_pos = unit.y_pos
-	grid[x_pos][y_pos].is_occupied = True
-	grid[x_pos +1][y_pos].is_occupied = True
-	grid[x_pos][y_pos+1].is_occupied = True
-	grid[x_pos+1][y_pos+1].is_occupied = True
-	grid[x_pos][y_pos].unit = unit
-	grid[x_pos +1][y_pos].unit = unit
-	grid[x_pos][y_pos+1].unit = unit
-	grid[x_pos+1][y_pos+1].unit =unit
 #----------------------------------------------Game Loop-----------------------------------------------
 x_offset = [0]
 y_offset = [0]
@@ -429,12 +416,17 @@ while True:
 			#check if the mouse is in the grid window
 			if (mouse_x < GRID_SURFACE_WIDTH and mouse_y < GRID_SURFACE_HEIGHT):
 				#----getting mouse position, grid location-----
-				print(pygame.mouse.get_pos())
+				print("occ. tiles")
+				for arr in grid:
+					for tile in arr:
+						if tile.is_occupied:
+							print (tile.x_pos, tile.y_pos)
 				actual_x = mouse_x - x_offset[0]
 				actual_y = mouse_y - y_offset[0]
 				actuals = (actual_x, actual_y)
 				grid_space = (actual_x/16, actual_y/16)
 				#debugging
+				print("other shit")
 				print(actual_x, actual_y)
 				print(grid_space)
 				print("Mouse is in grid:", is_in(pygame.mouse.get_pos(), gridSurface.get_rect()))
