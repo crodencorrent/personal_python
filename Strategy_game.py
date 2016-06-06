@@ -95,7 +95,7 @@ class Profession(object):
 
 default_prof = Profession()
 class Unit(object):
-	def __init__(self, sprite = image2, level = 1, hp = 10, max_hp = 10, ep = 10, max_ep = 10, profession = default_prof):
+	def __init__(self, sprite = image2, level = 1, hp = 10, max_hp = 10, ep = 10, max_ep = 10, profession = default_prof, skill_list = []):
 		self.sprite = sprite
 		self.x_pos = 10
 		self.y_pos = 10
@@ -108,6 +108,32 @@ class Unit(object):
 		self.move_range = 5
 		self.is_move_selected = False
 		self.is_attack_selected = False
+		self.skill_list = skill_list
+		self.is_friendly = True
+
+	def move(self, grid, x_pos, y_pos):
+		#unoccupy old squares
+		grid[self.x_pos][self.y_pos].is_occupied = False
+		grid[self.x_pos +1][self.y_pos].is_occupied = False
+		grid[self.x_pos][self.y_pos+1].is_occupied = False
+		grid[self.x_pos+1][self.y_pos+1].is_occupied = False
+		grid[self.x_pos][self.y_pos].unit = None
+		grid[self.x_pos +1][self.y_pos].unit = None
+		grid[self.x_pos][self.y_pos+1].unit = None
+		grid[self.x_pos+1][self.y_pos+1].unit = None
+		#change location
+		self.x_pos = x_pos
+		self.y_pos = y_pos
+		#occupy new squares
+		grid[x_pos][y_pos].is_occupied = True
+		grid[x_pos +1][y_pos].is_occupied = True
+		grid[x_pos][y_pos+1].is_occupied = True
+		grid[x_pos+1][y_pos+1].is_occupied = True
+		grid[x_pos][y_pos].unit = unit
+		grid[x_pos +1][y_pos].unit = unit
+		grid[x_pos][y_pos+1].unit = unit
+		grid[x_pos+1][y_pos+1].unit =unit
+
 	def find_move_range(self, grid, current_square):
 		Q = Queue.Queue()
 		Q.put(current_square)
@@ -198,6 +224,8 @@ class Unit(object):
 						grid[current[0]][current[1]-1].is_move_highlighted = False
 						Q.put(down)
 
+
+
 class Skill(object):
 	def __init__(self, name = "Skill", is_passive = False, energy_cost = 0, turn_time = 1, power_mult = 1, aoe = 0, statuses = [], 
 	description = "", targets_friendly = False):
@@ -213,10 +241,14 @@ class Skill(object):
 
 default_skill = Skill()
 test_unit = Unit()
+test_unit.skill_list.append(default_skill)
 test_unit.is_move_selected = True
+test_unit.is_friendly = True
+test_unit2 = Unit()
+test_unit2.x_pos = 4
+test_unit2.y_pos = 4
 print(test_unit.profession.weight_class)
 print(test_unit.x_pos)
-
 #------------------------------Functions------------------------------
 def scroll_map(keys, grid, update_needed, x_offset, y_offset):
 	scroll_speed = 6
@@ -250,6 +282,20 @@ def draw_animation(grid, surface, animation_list, anim_count):
 				surface.blit(tile.terrain.sprite, (x_index*16,y_index*16))	
 			if tile.is_move_highlighted:
 				surface.blit(move_anims[anim_count%len(move_anims)], Rect(tile.x_pos*16, tile.y_pos*16, 16, 16), area = None, special_flags = BLEND_RGBA_ADD)
+
+def check_occupation(grid, tile):
+	tiles = []
+	x_pos = tile.x_pos
+	y_pos = tile.y_pos
+	tiles.append(tile)
+	tiles.append(grid[x_pos+1][y_pos])
+	tiles.append(grid[x_pos][y_pos+1])
+	tiles.append(grid[x_pos+1][y_pos+1])
+	for tile in tiles:
+		if tile.is_occupied:
+			return True
+	return False
+
 #------------------------------------Terrain Declarations---------------------------------
 lava = Terrain("Lava", lava_sprite)
 tree = Terrain("Tree", tree_sprite)
@@ -318,7 +364,10 @@ pygame.draw.rect(mapWindow, RED, Rect(10*16, 10*16, 16, 16))
 #Grid surface contains the area where the grid is visible, map surface contains entire grid
 friendly_units = []
 friendly_units.append(test_unit)
+enemy_units = []
+enemy_units.append(test_unit2)
 draw_units(mapWindow,friendly_units)
+draw_units(mapWindow, enemy_units)
 gridSurface.blit(mapWindow, (0,0))
 windowSurface.blit(gridSurface, (0,0))
 pygame.display.update()
@@ -334,10 +383,23 @@ for unit in friendly_units:
 	grid[x_pos +1][y_pos].unit = unit
 	grid[x_pos][y_pos+1].unit = unit
 	grid[x_pos+1][y_pos+1].unit =unit
+for unit in enemy_units:
+	x_pos = unit.x_pos
+	y_pos = unit.y_pos
+	grid[x_pos][y_pos].is_occupied = True
+	grid[x_pos +1][y_pos].is_occupied = True
+	grid[x_pos][y_pos+1].is_occupied = True
+	grid[x_pos+1][y_pos+1].is_occupied = True
+	grid[x_pos][y_pos].unit = unit
+	grid[x_pos +1][y_pos].unit = unit
+	grid[x_pos][y_pos+1].unit = unit
+	grid[x_pos+1][y_pos+1].unit =unit
 #----------------------------------------------Game Loop-----------------------------------------------
 x_offset = [0]
 y_offset = [0]
 currently_selected_unit = friendly_units[0]
+print(len(grid), "grid length")
+print(len(grid[0]), "grid width")
 while True:
 #---------------------------------------------Player input----------------------------------------------
 	for event in pygame.event.get():
@@ -370,6 +432,7 @@ while True:
 					#debugging
 					print(grid[grid_space[0]][grid_space[1]].terrain.name)
 					print("this space is occupied: ", selected_space.is_occupied)
+					print("occupation_check:", check_occupation(grid,selected_space))
 					#if occupied, selected the unit in it
 					if selected_space.is_occupied and currently_selected_unit == None:
 						currently_selected_unit = selected_space.unit
@@ -378,12 +441,11 @@ while True:
 						if ((currently_selected_unit is not None) and not (selected_space.is_move_highlighted)):
 							currently_selected_unit.unfind_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
 							currently_selected_unit = None
-						#if selected unit and space IS move highlighted, move the unit
-						elif ((currently_selected_unit is not None) and (selected_space.is_move_highlighted)):
+						#if selected unit is not none and space IS move highlighted and empty, move the unit
+						elif ((currently_selected_unit is not None) and (selected_space.is_move_highlighted) and (check_occupation(grid, selected_space) == False)):
 							currently_selected_unit.unfind_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
 							distance = abs(currently_selected_unit.x_pos - selected_space.x_pos) + abs(currently_selected_unit.y_pos - selected_space.y_pos)
-							currently_selected_unit.x_pos = selected_space.x_pos
-							currently_selected_unit.y_pos = selected_space.y_pos
+							currently_selected_unit.move(grid, selected_space.x_pos, selected_space.y_pos)
 							print("current coordinates =", currently_selected_unit.x_pos, currently_selected_unit.y_pos)
 							currently_selected_unit.move_range -= distance
 							currently_selected_unit.find_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
@@ -405,6 +467,7 @@ while True:
 	draw_animation(grid, mapWindow, move_anims, anim_count)
 	#draw units onto the grid
 	draw_units(mapWindow,friendly_units)
+	draw_units(mapWindow,enemy_units)
 	#drawing the map surface to the grid window (the area in the upper left)
 	gridSurface.blit(mapWindow, (x_offset[0],y_offset[0]))
 	#Drawing the grid window to the entire window
