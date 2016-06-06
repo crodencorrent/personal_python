@@ -110,7 +110,8 @@ class Unit(object):
 		self.is_attack_selected = False
 		self.skill_list = skill_list
 		self.is_friendly = True
-
+		self.attack_range = 1
+		self.all_occupied = []
 	def move(self, grid, x_pos, y_pos):
 		#unoccupy old squares
 		grid[self.x_pos][self.y_pos].is_occupied = False
@@ -121,6 +122,7 @@ class Unit(object):
 		grid[self.x_pos +1][self.y_pos].unit = None
 		grid[self.x_pos][self.y_pos+1].unit = None
 		grid[self.x_pos+1][self.y_pos+1].unit = None
+		self.all_occupied = []
 		#change location
 		self.x_pos = x_pos
 		self.y_pos = y_pos
@@ -133,7 +135,20 @@ class Unit(object):
 		grid[x_pos +1][y_pos].unit = unit
 		grid[x_pos][y_pos+1].unit = unit
 		grid[x_pos+1][y_pos+1].unit =unit
+		self.find_all_occupied(grid)
+		for tile in self.all_occupied:
+			print(tile.x_pos, tile.y_pos)
+	def find_all_occupied(self, grid):
+		self.all_occupied.append(grid[self.x_pos][self.y_pos])
+		self.all_occupied.append(grid[self.x_pos+1][self.y_pos])
+		self.all_occupied.append(grid[self.x_pos][self.y_pos+1])
+		self.all_occupied.append(grid[self.x_pos+1][self.y_pos+1])
 
+	def find_min_distance(self, point):
+		minimum_distance = 100000
+		for tile in self.all_occupied:
+			minimum_distance = min(find_distance((tile.x_pos, tile.y_pos), point), minimum_distance)
+		return minimum_distance
 	def find_move_range(self, grid, current_square):
 		Q = Queue.Queue()
 		Q.put(current_square)
@@ -145,36 +160,32 @@ class Unit(object):
 			down =  (current[0], current[1]-1)
 			#check if right is already highlighted
 			if(not grid[right[0]][right[1]].is_move_highlighted):
-				x_distance = abs(right[0] - self.x_pos)
-				y_distance = abs(right[1] - self.y_pos)
+				distance = self.find_min_distance(right)
 				#check if right is in the move_range
-				if (x_distance + y_distance <= self.move_range):
+				if (distance <= self.move_range):
 					#highlight right and put in Queue
 					grid[current[0]+1][current[1]].is_move_highlighted = True
 					Q.put(right)
 			#check if up is already highlighted
 			if(not grid[up[0]][up[1]].is_move_highlighted):
-				x_distance = abs(up[0] - self.x_pos)
-				y_distance = abs(up[1] - self.y_pos)
+				distance = self.find_min_distance(up)
 				#check if up is in the move_range
-				if (x_distance + y_distance <= self.move_range):
+				if (distance <= self.move_range):
 					#highlight up and put in Queue
 					grid[current[0]][current[1]+1].is_move_highlighted = True
 					Q.put(up)
 			#check if left is already highlighted
 			if(not grid[left[0]][left[1]].is_move_highlighted):
-				x_distance = abs(left[0] - self.x_pos)
-				y_distance = abs(left[1] - self.y_pos)
+				distance = self.find_min_distance(left)
 				#check if left is in the move_range
-				if (x_distance + y_distance <= self.move_range):
+				if (distance <= self.move_range):
 					#highlight left and put in Queue
 					grid[current[0]-1][current[1]].is_move_highlighted = True
 					Q.put(left)
 			if(not grid[down[0]][down[1]].is_move_highlighted):
-				x_distance = abs(down[0] - self.x_pos)
-				y_distance = abs(down[1] - self.y_pos)
+				distance = self.find_min_distance(down)
 				#check if down is in the move_range
-				if (x_distance + y_distance <= self.move_range):
+				if (distance<= self.move_range):
 					#highlight down and put in Queue
 					grid[current[0]][current[1]-1].is_move_highlighted = True
 					Q.put(down)
@@ -190,36 +201,32 @@ class Unit(object):
 				down =  (current[0], current[1]-1)
 				#check if right is already highlighted
 				if(grid[right[0]][right[1]].is_move_highlighted):
-					x_distance = abs(right[0] - self.x_pos)
-					y_distance = abs(right[1] - self.y_pos)
+					distance = self.find_min_distance(right)
 					#check if right is in the move_range
-					if (x_distance + y_distance <= self.move_range):
+					if (distance <= self.move_range):
 						#highlight right and put in Queue
 						grid[current[0]+1][current[1]].is_move_highlighted = False
 						Q.put(right)
 				#check if up is already highlighted
 				if(grid[up[0]][up[1]].is_move_highlighted):
-					x_distance = abs(up[0] - self.x_pos)
-					y_distance = abs(up[1] - self.y_pos)
+					distance = self.find_min_distance(up)
 					#check if up is in the move_range
-					if (x_distance + y_distance <= self.move_range):
+					if (distance <= self.move_range):
 						#highlight up and put in Queue
 						grid[current[0]][current[1]+1].is_move_highlighted = False
 						Q.put(up)
 				#check if left is already highlighted
 				if(grid[left[0]][left[1]].is_move_highlighted):
-					x_distance = abs(left[0] - self.x_pos)
-					y_distance = abs(left[1] - self.y_pos)
+					distance = self.find_min_distance(left)
 					#check if left is in the move_range
-					if (x_distance + y_distance <= self.move_range):
+					if (distance <= self.move_range):
 						#highlight left and put in Queue
 						grid[current[0]-1][current[1]].is_move_highlighted = False
 						Q.put(left)
 				if(grid[down[0]][down[1]].is_move_highlighted):
-					x_distance = abs(down[0] - self.x_pos)
-					y_distance = abs(down[1] - self.y_pos)
+					distance = self.find_min_distance(right)
 					#check if down is in the move_range
-					if (x_distance + y_distance <= self.move_range):
+					if (distance <= self.move_range):
 						#highlight down and put in Queue
 						grid[current[0]][current[1]-1].is_move_highlighted = False
 						Q.put(down)
@@ -296,6 +303,8 @@ def check_occupation(grid, tile):
 			return True
 	return False
 
+def find_distance(point1, point2):
+	return (abs(point1[0] - point2[0]) + abs(point1[1] - point2[1]))
 #------------------------------------Terrain Declarations---------------------------------
 lava = Terrain("Lava", lava_sprite)
 tree = Terrain("Tree", tree_sprite)
@@ -357,6 +366,7 @@ while (i < grid_width):
 i = 0
 #-------------__TESTING__-----------
 anim_count = 0
+test_unit.find_all_occupied(grid)
 test_unit.find_move_range(grid, (test_unit.x_pos, test_unit.y_pos))
 draw_animation(grid, mapWindow, move_anims, anim_count)
 pygame.draw.rect(mapWindow, RED, Rect(10*16, 10*16, 16, 16))
@@ -364,8 +374,12 @@ pygame.draw.rect(mapWindow, RED, Rect(10*16, 10*16, 16, 16))
 #Grid surface contains the area where the grid is visible, map surface contains entire grid
 friendly_units = []
 friendly_units.append(test_unit)
+for unit in friendly_units:
+	unit.find_all_occupied(grid)
 enemy_units = []
 enemy_units.append(test_unit2)
+for unit in enemy_units:
+	unit.find_all_occupied(grid)
 draw_units(mapWindow,friendly_units)
 draw_units(mapWindow, enemy_units)
 gridSurface.blit(mapWindow, (0,0))
@@ -407,7 +421,7 @@ while True:
 		if event.type == QUIT:
 			pygame.quit()
 			sys.exit()
-		#Get the mouse input
+		#---------------------------------------Get the mouse input-----------------------------------------------------
 		if event.type == pygame.MOUSEBUTTONUP:
 			pos = pygame.mouse.get_pos()
 			mouse_x = pos[0]
