@@ -25,12 +25,20 @@ pygame.display.set_caption('Strategy Garm')
 #-----------------------------------------Image Loading----------------------------------
 terrain_sheet = spritesheet.spritesheet('Terrain_Tiles.png')
 move_animation_sheet = spritesheet.spritesheet('move_rect_animation.bmp.png')
+attack_animation_sheet = spritesheet.spritesheet('attack_rect_animation.png')
 count = 0
 move_anims = []
 while count < 8:
 	new_anim = move_animation_sheet.image_at((count*32, 0, 32, 32))
 	new_anim = pygame.transform.smoothscale(new_anim, (16,16))
 	move_anims.append(new_anim)
+	count += 1
+count = 0
+attack_anims = []
+while count < 8:
+	new_anim = attack_animation_sheet.image_at((count*32, 0, 32, 32))
+	new_anim = pygame.transform.smoothscale(new_anim, (16,16))
+	attack_anims.append(new_anim)
 	count += 1
 # Sprite is 16x16 pixels at location 0,0 in the file...
 terrain = terrain_sheet.image_at((0, 0, 16, 16))
@@ -64,6 +72,7 @@ class Tile(object):
 		self.is_passable = is_passable
 		self.is_moveable = True
 		self.is_move_highlighted = False
+		self.is_attack_highlighted = False
 		self.terrain = terrain
 		self.unit = None
 class Battle_Grid(object):
@@ -110,8 +119,10 @@ class Unit(object):
 		self.is_attack_selected = False
 		self.skill_list = skill_list
 		self.is_friendly = True
-		self.attack_range = 1
+		self.attack_range = 2
 		self.all_occupied = []
+		self.is_move_selected = False
+		self.is_attack_selected = False
 	def move(self, grid, x_pos, y_pos):
 		#unoccupy old squares
 		grid[self.x_pos][self.y_pos].is_occupied = False
@@ -199,7 +210,46 @@ class Unit(object):
 					#highlight down and put in Queue
 					grid[current[0]][current[1]-1].is_move_highlighted = True
 					Q.put(down)
-
+	def find_attack_range(self, grid, current_square):
+		Q = Queue.Queue()
+		Q.put(current_square)
+		while (not Q.empty()):
+			current = Q.get()
+			right = (current[0]+1, current[1])
+			up = (current[0], current[1]+1)
+			left = (current[0]-1, current[1])
+			down =  (current[0], current[1]-1)
+			#check if right is already highlighted
+			if(not grid[right[0]][right[1]].is_attack_highlighted):
+				distance = self.find_min_distance(right)
+				#check if right is in the attack_range
+				if (distance <= self.attack_range):
+					#highlight right and put in Queue
+					grid[current[0]+1][current[1]].is_attack_highlighted = True
+					Q.put(right)
+			#check if up is already highlighted
+			if(not grid[up[0]][up[1]].is_attack_highlighted):
+				distance = self.find_min_distance(up)
+				#check if up is in the attack_range
+				if (distance <= self.attack_range):
+					#highlight up and put in Queue
+					grid[current[0]][current[1]+1].is_attack_highlighted = True
+					Q.put(up)
+			#check if left is already highlighted
+			if(not grid[left[0]][left[1]].is_attack_highlighted):
+				distance = self.find_min_distance(left)
+				#check if left is in the attack_range
+				if (distance <= self.attack_range):
+					#highlight left and put in Queue
+					grid[current[0]-1][current[1]].is_attack_highlighted = True
+					Q.put(left)
+			if(not grid[down[0]][down[1]].is_attack_highlighted):
+				distance = self.find_min_distance(down)
+				#check if down is in the attack_range
+				if (distance<= self.attack_range):
+					#highlight down and put in Queue
+					grid[current[0]][current[1]-1].is_attack_highlighted = True
+					Q.put(down)
 	def unfind_move_range(self, grid, current_square):
 			Q = Queue.Queue()
 			Q.put(current_square)
@@ -239,6 +289,47 @@ class Unit(object):
 					if (distance <= self.move_range):
 						#highlight down and put in Queue
 						grid[current[0]][current[1]-1].is_move_highlighted = False
+						Q.put(down)
+
+	def unfind_attack_range(self, grid, current_square):
+			Q = Queue.Queue()
+			Q.put(current_square)
+			while (not Q.empty()):
+				current = Q.get()
+				right = (current[0]+1, current[1])
+				up = (current[0], current[1]+1)
+				left = (current[0]-1, current[1])
+				down =  (current[0], current[1]-1)
+				#check if right is already highlighted
+				if(grid[right[0]][right[1]].is_attack_highlighted):
+					distance = self.find_min_distance(right)
+					#check if right is in the attack_range
+					if (distance <= self.attack_range):
+						#highlight right and put in Queue
+						grid[current[0]+1][current[1]].is_attack_highlighted = False
+						Q.put(right)
+				#check if up is already highlighted
+				if(grid[up[0]][up[1]].is_attack_highlighted):
+					distance = self.find_min_distance(up)
+					#check if up is in the attack_range
+					if (distance <= self.attack_range):
+						#highlight up and put in Queue
+						grid[current[0]][current[1]+1].is_attack_highlighted = False
+						Q.put(up)
+				#check if left is already highlighted
+				if(grid[left[0]][left[1]].is_attack_highlighted):
+					distance = self.find_min_distance(left)
+					#check if left is in the attack_range
+					if (distance <= self.attack_range):
+						#highlight left and put in Queue
+						grid[current[0]-1][current[1]].is_attack_highlighted = False
+						Q.put(left)
+				if(grid[down[0]][down[1]].is_attack_highlighted):
+					distance = self.find_min_distance(right)
+					#check if down is in the attack_range
+					if (distance <= self.attack_range):
+						#highlight down and put in Queue
+						grid[current[0]][current[1]-1].is_attack_highlighted = False
 						Q.put(down)
 
 
@@ -299,6 +390,8 @@ def draw_animation(grid, surface, animation_list, anim_count):
 				surface.blit(tile.terrain.sprite, (x_index*16,y_index*16))	
 			if tile.is_move_highlighted:
 				surface.blit(move_anims[anim_count%len(move_anims)], Rect(tile.x_pos*16, tile.y_pos*16, 16, 16), area = None, special_flags = BLEND_RGBA_ADD)
+			elif tile.is_attack_highlighted:
+				surface.blit(attack_anims[anim_count%len(move_anims)], Rect(tile.x_pos*16, tile.y_pos*16, 16, 16), area = None, special_flags = BLEND_RGBA_ADD)
 
 def check_occupation(grid, tile):
 	tiles = []
@@ -399,6 +492,7 @@ pygame.display.update()
 x_offset = [0]
 y_offset = [0]
 currently_selected_unit = friendly_units[0]
+currently_selected_unit.is_move_selected = True
 print(len(grid), "grid length")
 print(len(grid[0]), "grid width")
 while True:
@@ -408,6 +502,30 @@ while True:
 		if event.type == QUIT:
 			pygame.quit()
 			sys.exit()
+		keys = pygame.key.get_pressed()
+		#if there is a unit selected
+		if currently_selected_unit is not None:
+			#if the a key is pressed, and the unit is not already attack selected
+			if (keys[pygame.K_a] and currently_selected_unit.is_attack_selected == False):
+				#the unit is now attack selected
+				currently_selected_unit.is_attack_selected = True
+				#if move selected, remove the current move range
+				if currently_selected_unit.is_move_selected == True:
+					print("unfinding move range")
+					currently_selected_unit.unfind_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+				#find the new attack range
+				currently_selected_unit.find_attack_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+				#set the move_selection to false
+				currently_selected_unit.is_move_selected = False
+				print("finding attack range")
+			#otherwise, if the m key is pressed and the unit is not already move selected
+			elif (keys[pygame.K_m] and currently_selected_unit.is_move_selected == False):
+				if currently_selected_unit.is_attack_selected == True:
+					print("unfinding move range")
+					currently_selected_unit.unfind_attack_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+				currently_selected_unit.is_attack_selected = False
+				currently_selected_unit.is_move_selected = True
+				currently_selected_unit.find_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
 		#---------------------------------------Get the mouse input-----------------------------------------------------
 		if event.type == pygame.MOUSEBUTTONUP:
 			pos = pygame.mouse.get_pos()
@@ -442,10 +560,16 @@ while True:
 					#if occupied, selected the unit in it
 					if selected_space.is_occupied and currently_selected_unit == None:
 						currently_selected_unit = selected_space.unit
+						currently_selected_unit.is_move_selected = True
 					else:
 						#if selected unit and clicking on a non-highlighted space, cancel unit seleciton and move range display
 						if ((currently_selected_unit is not None) and not (selected_space.is_move_highlighted)):
-							currently_selected_unit.unfind_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+							if currently_selected_unit.is_move_selected:
+								currently_selected_unit.unfind_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+								currently_selected_unit.is_move_selected = False
+							elif currently_selected_unit.is_attack_selected:
+								currently_selected_unit.unfind_attack_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+								currently_selected_unit.is_attack_selected = False
 							currently_selected_unit = None
 						#if selected unit is not none and space IS move highlighted and empty, move the unit
 						elif ((currently_selected_unit is not None) and (selected_space.is_move_highlighted) and (check_occupation(grid, selected_space) == False)):
@@ -457,9 +581,11 @@ while True:
 							currently_selected_unit.find_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
 					#if the selected_unit isnt none, find its move range
 					if currently_selected_unit is not None:
-						currently_selected_unit.find_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+						if currently_selected_unit.is_move_selected:
+							currently_selected_unit.find_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+						elif currently_selected_unit.is_attack_selected:
+							currently_selected_unit.find_attack_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
 	#get array of keypresses
-	keys = pygame.key.get_pressed()
 	#Variable to determine if background needs updating
 	update_needed = False
 	#Check for input to determine map scrolling
