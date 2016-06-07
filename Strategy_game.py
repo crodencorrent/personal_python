@@ -119,7 +119,7 @@ class Unit(object):
 		self.is_attack_selected = False
 		self.skill_list = skill_list
 		self.is_friendly = True
-		self.attack_range = 2
+		self.attack_range = 1
 		self.all_occupied = []
 		self.is_move_selected = False
 		self.is_attack_selected = False
@@ -393,7 +393,7 @@ def draw_animation(grid, surface, animation_list, anim_count):
 			elif tile.is_attack_highlighted:
 				surface.blit(attack_anims[anim_count%len(move_anims)], Rect(tile.x_pos*16, tile.y_pos*16, 16, 16), area = None, special_flags = BLEND_RGBA_ADD)
 
-def check_occupation(grid, tile):
+def check_occupation(grid, tile, unit):
 	tiles = []
 	x_pos = tile.x_pos
 	y_pos = tile.y_pos
@@ -403,7 +403,8 @@ def check_occupation(grid, tile):
 	tiles.append(grid[x_pos+1][y_pos+1])
 	for tile in tiles:
 		if tile.is_occupied:
-			return True
+			if tile.unit is not unit:
+				return True
 	return False
 
 def find_distance(point1, point2):
@@ -556,7 +557,7 @@ while True:
 					#debugging
 					print(grid[grid_space[0]][grid_space[1]].terrain.name)
 					print("this space is occupied: ", selected_space.is_occupied)
-					print("occupation_check:", check_occupation(grid,selected_space))
+					print("occupation_check:", check_occupation(grid,selected_space, currently_selected_unit))
 					#if occupied, selected the unit in it
 					if selected_space.is_occupied and currently_selected_unit == None:
 						currently_selected_unit = selected_space.unit
@@ -572,7 +573,7 @@ while True:
 								currently_selected_unit.is_attack_selected = False
 							currently_selected_unit = None
 						#if selected unit is not none and space IS move highlighted and empty, move the unit
-						elif ((currently_selected_unit is not None) and (selected_space.is_move_highlighted) and (check_occupation(grid, selected_space) == False)):
+						elif ((currently_selected_unit is not None) and (selected_space.is_move_highlighted) and (check_occupation(grid, selected_space, currently_selected_unit) == False)):
 							currently_selected_unit.unfind_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
 							distance = abs(currently_selected_unit.x_pos - selected_space.x_pos) + abs(currently_selected_unit.y_pos - selected_space.y_pos)
 							currently_selected_unit.move(grid, selected_space.x_pos, selected_space.y_pos)
