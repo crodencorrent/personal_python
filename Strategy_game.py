@@ -149,6 +149,7 @@ class Unit(object):
 		self.find_all_occupied(grid)
 		for tile in self.all_occupied:
 			print(tile.x_pos, tile.y_pos)
+
 	def find_all_occupied(self, grid):
 		self.all_occupied.append(grid[self.x_pos][self.y_pos])
 		self.all_occupied.append(grid[self.x_pos+1][self.y_pos])
@@ -409,6 +410,16 @@ def check_occupation(grid, tile, unit):
 
 def find_distance(point1, point2):
 	return (abs(point1[0] - point2[0]) + abs(point1[1] - point2[1]))
+
+def will_fit(grid, x_pos, y_pos):
+	will_fit = False
+	selected = grid[x_pos][y_pos].is_move_highlighted
+	right = grid[x_pos+1][y_pos].is_move_highlighted
+	down = grid[x_pos][y_pos+1].is_move_highlighted
+	diag = grid[x_pos+1][y_pos+1].is_move_highlighted
+	if (selected and right and down and diag):
+		will_fit = True
+	return will_fit
 #------------------------------------Terrain Declarations---------------------------------
 lava = Terrain("Lava", lava_sprite)
 tree = Terrain("Tree", tree_sprite)
@@ -573,7 +584,7 @@ while True:
 								currently_selected_unit.is_attack_selected = False
 							currently_selected_unit = None
 						#if selected unit is not none and space IS move highlighted and empty, move the unit
-						elif ((currently_selected_unit is not None) and (selected_space.is_move_highlighted) and (check_occupation(grid, selected_space, currently_selected_unit) == False)):
+						elif ((currently_selected_unit is not None) and (selected_space.is_move_highlighted) and (check_occupation(grid, selected_space, currently_selected_unit) == False) and will_fit(grid, selected_space.x_pos, selected_space.y_pos)):
 							currently_selected_unit.unfind_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
 							distance = abs(currently_selected_unit.x_pos - selected_space.x_pos) + abs(currently_selected_unit.y_pos - selected_space.y_pos)
 							currently_selected_unit.move(grid, selected_space.x_pos, selected_space.y_pos)
