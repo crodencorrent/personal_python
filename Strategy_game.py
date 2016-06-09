@@ -26,6 +26,7 @@ pygame.display.set_caption('Strategy Garm')
 terrain_sheet = spritesheet.spritesheet('Terrain_Tiles.png')
 move_animation_sheet = spritesheet.spritesheet('move_rect_animation.bmp.png')
 attack_animation_sheet = spritesheet.spritesheet('attack_rect_animation.png')
+unit_sheet = spritesheet.spritesheet('units_red.png')
 count = 0
 move_anims = []
 while count < 8:
@@ -43,6 +44,9 @@ while count < 8:
 # Sprite is 16x16 pixels at location 0,0 in the file...
 terrain = terrain_sheet.image_at((0, 0, 16, 16))
 image2 = pygame.image.load('rogue(1).png').convert_alpha()
+image2.set_alpha(0)
+print(image2.get_alpha())
+image2 = unit_sheet.image_at((0,0,32,32), colorkey = (255,255,255))
 # Load two images into an array, their transparent bit is (255, 255, 255)
 images = terrain_sheet.images_at(((0, 0, 16, 16),(17, 0, 16,16)), colorkey=(255, 255, 255))
 #-------terrain images
@@ -382,7 +386,7 @@ def is_in(point, rect):
 
 def draw_units(mapWindow, unit_list):
 	for unit in unit_list:
-		mapWindow.blit(unit.sprite, (unit.x_pos*16,unit.y_pos*16), area=None, special_flags = BLEND_RGBA_SUB)
+		mapWindow.blit(unit.sprite, (unit.x_pos*16,unit.y_pos*16), area=None, special_flags = BLEND_RGBA_ADD)
 
 def draw_animation(grid, surface, animation_list, anim_count):
 	for x_index, row in enumerate(grid):
@@ -420,6 +424,90 @@ def will_fit(grid, x_pos, y_pos):
 	if (selected and right and down and diag):
 		will_fit = True
 	return will_fit
+
+def determine_mode(currently_selected_unit,keys,grid):
+	if currently_selected_unit is not None:
+			#if the a key is pressed, and the unit is not already attack selected
+			if (keys[pygame.K_a] and currently_selected_unit.is_attack_selected == False):
+				#the unit is now attack selected
+				currently_selected_unit.is_attack_selected = True
+				#if move selected, remove the current move range
+				if currently_selected_unit.is_move_selected == True:
+					print("unfinding move range")
+					currently_selected_unit.unfind_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+				#find the new attack range
+				currently_selected_unit.find_attack_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+				#set the move_selection to false
+				currently_selected_unit.is_move_selected = False
+				print("finding attack range")
+			#otherwise, if the m key is pressed and the unit is not already move selected
+			elif (keys[pygame.K_m] and currently_selected_unit.is_move_selected == False):
+				if currently_selected_unit.is_attack_selected == True:
+					print("unfinding move range")
+					currently_selected_unit.unfind_attack_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+				currently_selected_unit.is_attack_selected = False
+				currently_selected_unit.is_move_selected = True
+				currently_selected_unit.find_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+def cancel_selection(currently_selected_unit, selected_space, grid):
+	if ((currently_selected_unit is not None) and not (selected_space.is_move_highlighted)):
+		if currently_selected_unit.is_move_selected:
+			currently_selected_unit.unfind_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+			currently_selected_unit.is_move_selected = False
+		elif currently_selected_unit.is_attack_selected:
+			currently_selected_unit.unfind_attack_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+			currently_selected_unit.is_attack_selected = False
+		currently_selected_unit = None
+		return currently_selected_unit
+
+def perform_move(currently_selected_unit, grid, selected_space):
+	currently_selected_unit.unfind_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+	distance = abs(currently_selected_unit.x_pos - selected_space.x_pos) + abs(currently_selected_unit.y_pos - selected_space.y_pos)
+	currently_selected_unit.move(grid, selected_space.x_pos, selected_space.y_pos)
+	print("current coordinates =", currently_selected_unit.x_pos, currently_selected_unit.y_pos)
+	currently_selected_unit.move_range -= distance
+	currently_selected_unit.find_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+
+def find_appropriate_range(currently_selected_unit, grid):
+	if currently_selected_unit.is_move_selected:
+		currently_selected_unit.find_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+	elif currently_selected_unit.is_attack_selected:
+		currently_selected_unit.find_attack_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+
+def battle_mouse_logic(grid_width, grid_height, grid, selected_space, currently_selected_unit):
+	pos = pygame.mouse.get_pos()
+	mouse_x = pos[0]
+	mouse_y = pos[1]
+	#check if the mouse is in the grid window
+	if (mouse_x < GRID_SURFACE_WIDTH and mouse_y < GRID_SURFACE_HEIGHT):
+		#----getting mouse position, grid location-----
+		actual_x = mouse_x - x_offset[0]
+		actual_y = mouse_y - y_offset[0]
+		actuals = (actual_x, actual_y)
+		grid_space = (actual_x/16, actual_y/16)
+		#--------------------------debugging
+		#--------------------------------if space is in the grid
+		if (grid_space[0] < grid_width and grid_space[1] < grid_height):
+			#assign selected space to grid tile
+			selected_space = grid[grid_space[0]][grid_space[1]]
+			#debugging
+			print(grid[grid_space[0]][grid_space[1]].terrain.name)
+			print("this space is occupied: ", selected_space.is_occupied)
+			print("occupation_check:", check_occupation(grid,selected_space, currently_selected_unit))
+			#if occupied, selected the unit in it
+			if selected_space.is_occupied and currently_selected_unit == None:
+				currently_selected_unit = selected_space.unit
+				currently_selected_unit.is_move_selected = True
+			else:
+				#if selected unit and clicking on a non-highlighted space, cancel unit seleciton and move range display
+				if ((currently_selected_unit is not None) and not (selected_space.is_move_highlighted)):
+					currently_selected_unit = cancel_selection(currently_selected_unit, selected_space, grid)
+				#if selected unit is not none and space IS move highlighted and empty, move the unit
+				elif ((currently_selected_unit is not None) and (selected_space.is_move_highlighted) and (check_occupation(grid, selected_space, currently_selected_unit) == False) and will_fit(grid, selected_space.x_pos, selected_space.y_pos)):
+					perform_move(currently_selected_unit, grid, selected_space)
+			#if the selected_unit isnt none, find its move range
+			if currently_selected_unit is not None:
+				find_appropriate_range(currently_selected_unit, grid)
+		return currently_selected_unit
 #------------------------------------Terrain Declarations---------------------------------
 lava = Terrain("Lava", lava_sprite)
 tree = Terrain("Tree", tree_sprite)
@@ -504,6 +592,7 @@ pygame.display.update()
 x_offset = [0]
 y_offset = [0]
 currently_selected_unit = friendly_units[0]
+selected_space = (0,0)
 currently_selected_unit.is_move_selected = True
 print(len(grid), "grid length")
 print(len(grid[0]), "grid width")
@@ -516,87 +605,10 @@ while True:
 			sys.exit()
 		keys = pygame.key.get_pressed()
 		#if there is a unit selected
-		if currently_selected_unit is not None:
-			#if the a key is pressed, and the unit is not already attack selected
-			if (keys[pygame.K_a] and currently_selected_unit.is_attack_selected == False):
-				#the unit is now attack selected
-				currently_selected_unit.is_attack_selected = True
-				#if move selected, remove the current move range
-				if currently_selected_unit.is_move_selected == True:
-					print("unfinding move range")
-					currently_selected_unit.unfind_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
-				#find the new attack range
-				currently_selected_unit.find_attack_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
-				#set the move_selection to false
-				currently_selected_unit.is_move_selected = False
-				print("finding attack range")
-			#otherwise, if the m key is pressed and the unit is not already move selected
-			elif (keys[pygame.K_m] and currently_selected_unit.is_move_selected == False):
-				if currently_selected_unit.is_attack_selected == True:
-					print("unfinding move range")
-					currently_selected_unit.unfind_attack_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
-				currently_selected_unit.is_attack_selected = False
-				currently_selected_unit.is_move_selected = True
-				currently_selected_unit.find_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+		determine_mode(currently_selected_unit, keys, grid)
 		#---------------------------------------Get the mouse input-----------------------------------------------------
 		if event.type == pygame.MOUSEBUTTONUP:
-			pos = pygame.mouse.get_pos()
-			mouse_x = pos[0]
-			mouse_y = pos[1]
-			#check if the mouse is in the grid window
-			if (mouse_x < GRID_SURFACE_WIDTH and mouse_y < GRID_SURFACE_HEIGHT):
-				#----getting mouse position, grid location-----
-				print("occ. tiles")
-				for arr in grid:
-					for tile in arr:
-						if tile.is_occupied:
-							print (tile.x_pos, tile.y_pos)
-				actual_x = mouse_x - x_offset[0]
-				actual_y = mouse_y - y_offset[0]
-				actuals = (actual_x, actual_y)
-				grid_space = (actual_x/16, actual_y/16)
-				#debugging
-				print("other shit")
-				print(actual_x, actual_y)
-				print(grid_space)
-				print("Mouse is in grid:", is_in(pygame.mouse.get_pos(), gridSurface.get_rect()))
-				print("Mouse is in map:", is_in(pygame.mouse.get_pos(), mapWindow.get_rect()))
-				#if space is in the grid
-				if (grid_space[0] < grid_width and grid_space[1] < grid_height):
-					#assign selected space to grid tile
-					selected_space = grid[grid_space[0]][grid_space[1]]
-					#debugging
-					print(grid[grid_space[0]][grid_space[1]].terrain.name)
-					print("this space is occupied: ", selected_space.is_occupied)
-					print("occupation_check:", check_occupation(grid,selected_space, currently_selected_unit))
-					#if occupied, selected the unit in it
-					if selected_space.is_occupied and currently_selected_unit == None:
-						currently_selected_unit = selected_space.unit
-						currently_selected_unit.is_move_selected = True
-					else:
-						#if selected unit and clicking on a non-highlighted space, cancel unit seleciton and move range display
-						if ((currently_selected_unit is not None) and not (selected_space.is_move_highlighted)):
-							if currently_selected_unit.is_move_selected:
-								currently_selected_unit.unfind_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
-								currently_selected_unit.is_move_selected = False
-							elif currently_selected_unit.is_attack_selected:
-								currently_selected_unit.unfind_attack_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
-								currently_selected_unit.is_attack_selected = False
-							currently_selected_unit = None
-						#if selected unit is not none and space IS move highlighted and empty, move the unit
-						elif ((currently_selected_unit is not None) and (selected_space.is_move_highlighted) and (check_occupation(grid, selected_space, currently_selected_unit) == False) and will_fit(grid, selected_space.x_pos, selected_space.y_pos)):
-							currently_selected_unit.unfind_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
-							distance = abs(currently_selected_unit.x_pos - selected_space.x_pos) + abs(currently_selected_unit.y_pos - selected_space.y_pos)
-							currently_selected_unit.move(grid, selected_space.x_pos, selected_space.y_pos)
-							print("current coordinates =", currently_selected_unit.x_pos, currently_selected_unit.y_pos)
-							currently_selected_unit.move_range -= distance
-							currently_selected_unit.find_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
-					#if the selected_unit isnt none, find its move range
-					if currently_selected_unit is not None:
-						if currently_selected_unit.is_move_selected:
-							currently_selected_unit.find_move_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
-						elif currently_selected_unit.is_attack_selected:
-							currently_selected_unit.find_attack_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
+			currently_selected_unit = battle_mouse_logic(grid_width, grid_height, grid, selected_space, currently_selected_unit)
 	#get array of keypresses
 	#Variable to determine if background needs updating
 	update_needed = False
