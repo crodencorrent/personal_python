@@ -337,6 +337,11 @@ class Unit(object):
 						grid[current[0]][current[1]-1].is_attack_highlighted = False
 						Q.put(down)
 
+	def perform_targeted_attack(self, target_unit, skill):
+		print(target_unit.hp)
+		target_unit.hp -= self.profession.base_atk * skill.power_mult
+		print(target_unit.hp)
+
 
 
 class Skill(object):
@@ -473,6 +478,16 @@ def find_appropriate_range(currently_selected_unit, grid):
 	elif currently_selected_unit.is_attack_selected:
 		currently_selected_unit.find_attack_range(grid, (currently_selected_unit.x_pos, currently_selected_unit.y_pos))
 
+def check_aliveness(unit_list, grid):
+	for unit in unit_list:
+		if unit.hp <= 0:
+			grid[unit.x_pos][unit.y_pos].is_occupied = False
+			grid[unit.x_pos +1][unit.y_pos].is_occupied = False
+			grid[unit.x_pos][unit.y_pos+1].is_occupied = False
+			grid[unit.x_pos+1][unit.y_pos+1].is_occupied = False
+	unit_list[:] = [unit for unit in unit_list if not (unit.hp <= 0)]
+
+
 def battle_mouse_logic(grid_width, grid_height, grid, selected_space, currently_selected_unit):
 	pos = pygame.mouse.get_pos()
 	mouse_x = pos[0]
@@ -499,11 +514,14 @@ def battle_mouse_logic(grid_width, grid_height, grid, selected_space, currently_
 				currently_selected_unit.is_move_selected = True
 			else:
 				#if selected unit and clicking on a non-highlighted space, cancel unit seleciton and move range display
-				if ((currently_selected_unit is not None) and not (selected_space.is_move_highlighted)):
+				if ((currently_selected_unit is not None) and not (selected_space.is_move_highlighted or selected_space.is_attack_highlighted)):
 					currently_selected_unit = cancel_selection(currently_selected_unit, selected_space, grid)
 				#if selected unit is not none and space IS move highlighted and empty, move the unit
 				elif ((currently_selected_unit is not None) and (selected_space.is_move_highlighted) and (check_occupation(grid, selected_space, currently_selected_unit) == False) and will_fit(grid, selected_space.x_pos, selected_space.y_pos)):
 					perform_move(currently_selected_unit, grid, selected_space)
+				elif((currently_selected_unit is not None) and (selected_space.is_attack_highlighted) and selected_space.is_occupied == True):
+					currently_selected_unit.perform_targeted_attack(selected_space.unit, default_skill)
+
 			#if the selected_unit isnt none, find its move range
 			if currently_selected_unit is not None:
 				find_appropriate_range(currently_selected_unit, grid)
@@ -629,7 +647,8 @@ while True:
 	#Drawing the grid window to the entire window
 	windowSurface.blit(gridSurface, (0,0))
 	#update the display
-
+	check_aliveness(friendly_units, grid)
+	check_aliveness(enemy_units, grid)
 	pygame.display.update()
 	anim_count += 1
 	if anim_count > (5000000):
