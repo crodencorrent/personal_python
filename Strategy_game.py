@@ -56,6 +56,12 @@ tree_sprite = terrain_sheet.image_at((base_size*7,base_size*6,32,32))
 #-----------------------------------------------------------------------------------------
 #color declarations
 #-------------------------------Classes-------------------------------
+class CurrentInfo(object):
+	def __init__(self, currently_selected_unit = None, selected_space = None, selected_target = None):
+		self.currently_selected_unit = currently_selected_unit
+		self.selected_space = selected_space
+		self.selected_target = selected_target
+current_info = CurrentInfo()
 class Terrain(object):
 	def __init__(self, name, sprite, traction = 0, evade = 0, phys = 0, nature = 0, energy = 0, phantasm = 0):
 		self.name = name
@@ -108,7 +114,8 @@ class Profession(object):
 
 default_prof = Profession()
 class Unit(object):
-	def __init__(self, sprite = image2, level = 1, hp = 10, max_hp = 10, ep = 10, max_ep = 10, profession = default_prof, skill_list = []):
+	def __init__(self, sprite = image2, level = 1, hp = 10, max_hp = 10, ep = 10, max_ep = 10, profession = default_prof, skill_list = [],
+		atk = 10, defn = 10, speed = 10, magic = 10, mdef = 10):
 		self.sprite = sprite
 		self.x_pos = 10
 		self.y_pos = 10
@@ -117,6 +124,11 @@ class Unit(object):
 		self.max_ep = max_ep
 		self.hp = hp
 		self.ep = ep
+		self.atk = atk
+		self.defn = defn
+		self.speed = speed
+		self.magic = magic
+		self.mdef = mdef
 		self.profession = profession
 		self.move_range = 5
 		self.is_move_selected = False
@@ -487,6 +499,37 @@ def check_aliveness(unit_list, grid):
 			grid[unit.x_pos+1][unit.y_pos+1].is_occupied = False
 	unit_list[:] = [unit for unit in unit_list if not (unit.hp <= 0)]
 
+def draw_gui_upright(currently_selected_unit, grid, windowSurface, selected_space):
+	right_gui = pygame.draw.rect(windowSurface, GREEN, Rect(GRID_SURFACE_WIDTH, 0, WIDTH - GRID_SURFACE_WIDTH, HEIGHT))
+	if currently_selected_unit is not None:
+		pygame.draw.rect(windowSurface, RED, Rect(GRID_SURFACE_WIDTH, 0, 32, 32))
+		#-----------------------------------Hitpoints text--------------------------------------------------------------------------
+		text_hp = newFont.render("HP: " + str(currently_selected_unit.hp) + "/" + str(currently_selected_unit.max_hp), 1, (10, 10, 10))
+		textpos_hp = text_hp.get_rect()
+		textpos_hp.x = right_gui.x
+		textpos_hp.centery = right_gui.top + 80
+		#this text is 80 pixels down and starts at the left edge of the Right GUI
+		windowSurface.blit(text_hp, textpos_hp)
+		#------------------------------------EP text--------------------------------------------------------------------------------
+		text_ep = newFont.render("EP: " + str(currently_selected_unit.ep) + "/" + str(currently_selected_unit.max_ep), 1, (10, 10, 10))
+		textpos_ep = text_ep.get_rect()
+		textpos_ep.x = right_gui.x
+		textpos_ep.centery = right_gui.top + 120
+		#this text is 80 pixels down and starts at the left edge of the Right GUI
+		windowSurface.blit(text_ep, textpos_ep)
+
+def draw_gui_bottom(currently_selected_unit, grid, windowSurface, selected_space):
+	bottom_gui = pygame.draw.rect(windowSurface, OFFRED, Rect(0, GRID_SURFACE_HEIGHT, WIDTH, 150))
+	if selected_space is not None:
+		text_evade = newFont.render("Evade: " + str(selected_space.terrain.evade), 1, (10, 10, 10))
+		textpos_evade = text_evade.get_rect()
+		textpos_evade.x = bottom_gui.x + 20
+		textpos_evade.centery = bottom_gui.top + 20
+		windowSurface.blit(text_evade, textpos_evade)
+
+
+
+
 
 def battle_mouse_logic(grid_width, grid_height, grid, selected_space, currently_selected_unit):
 	pos = pygame.mouse.get_pos()
@@ -527,8 +570,8 @@ def battle_mouse_logic(grid_width, grid_height, grid, selected_space, currently_
 				find_appropriate_range(currently_selected_unit, grid)
 		return currently_selected_unit
 #------------------------------------Terrain Declarations---------------------------------
-lava = Terrain("Lava", lava_sprite)
-tree = Terrain("Tree", tree_sprite)
+lava = Terrain("Lava", lava_sprite, traction = 0, evade = 10, phys = 0, nature = 0, energy = 0, phantasm = 0)
+tree = Terrain("Tree", tree_sprite, traction = 20, evade = 20, phys = 20, nature = 20, energy = -20, phantasm = -25)
 #--------------------------------------------Initial Setup--------------------------------
 GRID_SQUARE_SIZE = 16
 #set up battle grid
@@ -546,15 +589,18 @@ for i in range(0, grid_width):
 		x.append(Tile(pygame.Rect(i*GRID_SQUARE_SIZE,j*GRID_SQUARE_SIZE, GRID_SQUARE_SIZE, GRID_SQUARE_SIZE), i, j,False,True, (0,0,0)))
 	grid.append(x)
 
-
+print(pygame.font.get_fonts())
 BLACK = (0,0,0)
 WHITE = (255, 255, 255)
 MYSTERY = (200, 100, 50)
 GREEN = (0,255,0)
 BLUE = (0, 0, 255, 128)
 RED = (255, 0 , 0)
+OFFRED = (170, 20, 40)
 #font setup
 basicFont = pygame.font.SysFont(None, 48)
+basicFontSmall = pygame.font.SysFont(None, 16)
+newFont = pygame.font.SysFont('dejavuserif', 16)
 #text setup
 windowSurface.fill(WHITE)
 mapWindow.fill(WHITE)
@@ -610,7 +656,7 @@ pygame.display.update()
 x_offset = [0]
 y_offset = [0]
 currently_selected_unit = friendly_units[0]
-selected_space = (0,0)
+selected_space = grid[0][0]
 currently_selected_unit.is_move_selected = True
 print(len(grid), "grid length")
 print(len(grid[0]), "grid width")
@@ -647,6 +693,9 @@ while True:
 	#Drawing the grid window to the entire window
 	windowSurface.blit(gridSurface, (0,0))
 	#update the display
+	print(selected_space.x_pos, selected_space.y_pos, selected_space.terrain.name)
+	draw_gui_upright(currently_selected_unit, grid, windowSurface, selected_space)
+	draw_gui_bottom(currently_selected_unit, grid, windowSurface, selected_space)
 	check_aliveness(friendly_units, grid)
 	check_aliveness(enemy_units, grid)
 	pygame.display.update()
